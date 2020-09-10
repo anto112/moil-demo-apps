@@ -6,6 +6,7 @@ import numpy as np
 from Moildev import Moildev
 from ConfigData import Config
 from image_resize import image_resize
+import datetime
 
 
 class model(QtWidgets.QMainWindow):
@@ -23,7 +24,6 @@ class model(QtWidgets.QMainWindow):
         # self.ui.label_result.wheelEvent = self.wheelEvent
         # self.ui.label_result.mouseReleaseEvent(None)
         # self.ui.label_result.mousePressEvent(None)
-        self.ui.original_source.mouseReleaseEvent = self.mouseRelease
         self.image = None
         self.mode = None
         self.image_result = None
@@ -94,10 +94,6 @@ class model(QtWidgets.QMainWindow):
         self.mapX = np.zeros((self.h, self.w), dtype=np.float32)
         self.mapY = np.zeros((self.h, self.w), dtype=np.float32)
 
-    # def mouse_controler(self):
-    #     print("oke")
-    #     self.ui.original_source.mouseReleaseEvent = self.mouseRelease
-
     def disableRadio_any(self):
         self.ui.groupBox.hide()
         self.ui.groupBox_3.hide()
@@ -135,24 +131,17 @@ class model(QtWidgets.QMainWindow):
         if len(self.filename) == 0:
             pass
         else:
-            self.mode = 'image'
-            if self.cap:
-                self.onclick_stop_btn()
-                self.cap.release()
-                self.cap = None
-                self.image = cv2.imread(self.filename)
-                self.image_ori = self.image.copy()
-                self.view_original()
-                # self.mouse_controler()
-            else:
                 self.image = cv2.imread(self.filename)
                 self.image_ori = self.image.copy()
                 self.view_original()
                 self.normal_view()
                 self.ui.normal_view.setChecked(True)
                 self.init_Map()
+                self.ui.original_source.mouseReleaseEvent = self.mouseRelease
+                self.ui.original_source.mouseDoubleClickEvent = self.mouseDoubleClick
+                self.ui.plus_icon.mouseDoubleClickEvent = self.mouseDoubleClick
+                # self.ui.plus_icon.mouseReleaseEvent = self.mouseRelease
                 # self.mouse_controler()
-
 
     def normal_view(self):
         self.anypoint = False
@@ -336,16 +325,9 @@ class model(QtWidgets.QMainWindow):
         self.points3 = r.T.reshape((-1, 1, 2));
         self.points4 = s.T.reshape((-1, 1, 2))
 
-    def mousePressEvent(self, e):
+    def mousePress(self, e):
         """ Get the position coordinate from mouse event"""
         if e.button() == QtCore.Qt.LeftButton:
-            # self.currPos = e.pos()
-            # self.pos_x = round(e.x() * self.ratio_x)
-            # self.pos_y = round(e.y() * self.ratio_y)
-            # delta_x = round(self.pos_x - self.w * 0.5)
-            # delta_y = round(- (self.pos_y - self.h * 0.5))
-            # self.alpha, self.beta = self.config.get_alpha_beta(1, delta_x, delta_y)
-            # self.anypoint_view()
             pass
 
     def wheelEvent(self, e):
@@ -374,16 +356,30 @@ class model(QtWidgets.QMainWindow):
             else:
                 pass
 
-    def mouseDoubleClickEvent(self, e):
+    def saveImage(self):
+        ss = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        filename = "result/ss_" + str(ss) + ".png"
+        if self.image is None:
+            pass
+
+        else:
+            cv2.imwrite(filename, self.result)
+            msgbox = QtWidgets.QMessageBox()
+            msgbox.setWindowTitle("Save File")
+            msgbox.setText("\nImage saved succeed !!")
+            msgbox.setIconPixmap(QtGui.QPixmap('assets/check.png'))
+            msgbox.exec()
+
+    def mouseDoubleClick(self, e):
         if self.anypoint:
             self.alpha = 0
             self.beta = 0
             self.zoom = 4
             self.anypoint_view()
-        elif self.panorama:
+        elif self.pano:
             self.alpha = 0
             self.beta = 0
-            self.panorama_view()
+            self.onclick_panorama_view()
         elif self.normal:
             self.alpha = 0
             self.beta = 0
@@ -403,14 +399,15 @@ class model(QtWidgets.QMainWindow):
                     self.zoom += 1
                     self.anypoint_view()
 
+            elif self.pano:
+                pass
+
             elif self.normal:
                 if self.height == 2000:
                     pass
                 else:
                     self.height += 100
                     self.normal_view()
-            else:
-                pass
 
     def zoom_out(self):
         if self.image is None:
@@ -422,6 +419,8 @@ class model(QtWidgets.QMainWindow):
                 else:
                     self.zoom -= 1
                     self.anypoint_view()
+            elif self.pano:
+                pass
 
             elif self.normal:
                 if self.height == 700:
@@ -429,8 +428,6 @@ class model(QtWidgets.QMainWindow):
                 else:
                     self.height -= 100
                     self.normal_view()
-            else:
-                pass
 
     def rotate_left(self):
         if self.image is None:
