@@ -17,13 +17,6 @@ class model(QtWidgets.QMainWindow):
         self.videoStreamURL = 'http://192.168.100.204:8000/stream.mjpg'
         self.filename = "./parameter/picamera.json"
         self.config = Config(self.filename)
-        # self.ui.original_source.mousePressEvent = self.mousePressEvent
-        # self.ui.label_ori.wheelEvent = self.wheelEvent
-        # self.ui.original_source.mouseReleaseEvent = self.mouseReleaseEvent
-        # self.ui.label_ori.mouseDoubleClickEvent = self.mouseDoubleClickEvent
-        # self.ui.label_result.wheelEvent = self.wheelEvent
-        # self.ui.label_result.mouseReleaseEvent(None)
-        # self.ui.label_result.mousePressEvent(None)
         self.image = None
         self.mode = None
         self.image_result = None
@@ -38,6 +31,7 @@ class model(QtWidgets.QMainWindow):
         self.anypoint = False
         self.pano = False
         self.normal = False
+        self.panoX = False
         self.anypointState = 1
         self.connect_event()
         self.ui.any_mode_1.setChecked(True)
@@ -48,7 +42,6 @@ class model(QtWidgets.QMainWindow):
     def connect_event(self):
         self.ui.actionExit.triggered.connect(self.onclick_exit)
         self.ui.actionAbout_Us.triggered.connect(self.onclick_aboutUs)
-        self.ui.actionShort_Cut.triggered.connect(self.onclick_shortcut)
         self.ui.open_image.clicked.connect(self.open_image)
         self.ui.normal_view.clicked.connect(self.normal_view)
         self.ui.rotate_left.clicked.connect(self.rotate_left)
@@ -59,6 +52,9 @@ class model(QtWidgets.QMainWindow):
         self.ui.any_mode_1.clicked.connect(self.onclick_radio_mode1)
         self.ui.any_mode_2.clicked.connect(self.onclick_radio_mode2)
         self.ui.set_panorama.clicked.connect(self.set_pano)
+        self.ui.actionLoad_Parameter.triggered.connect(self.load_param)
+        self.ui.actionOpen_Image.triggered.connect(self.open_image)
+        self.ui.panoX_view.clicked.connect(self.onclickPanoramaX)
 
     def initMoildev(self):
         self.camera = self.config.get_cameraName()
@@ -79,6 +75,7 @@ class model(QtWidgets.QMainWindow):
         self.moildev = Moildev(self.camera, self.sensor_width, self.sensor_height, self.Icx, self.Icy, self.ratio,
                                self.imageWidth, self.imageHeight, self.parameter0, self.parameter1, self.parameter2,
                                self.parameter3, self.parameter4, self.parameter5, self.calibrationRatio)
+        self.ui.lineEdit.setText(str(self.camera))
 
     def init_Map(self):
         self.h, self.w = self.image_ori.shape[:2]
@@ -106,10 +103,7 @@ class model(QtWidgets.QMainWindow):
         if self.anypoint:
             self.img = cv2.resize(self.img_any, (400, 300), interpolation=cv2.INTER_AREA)
         else:
-            #     if self.img_view_FoV is None:
             self.img = cv2.resize(self.image_ori, (400, 300), interpolation=cv2.INTER_AREA)
-        #     else:
-        #         self.img = cv2.resize(self.img_view_FoV, (400, 300), interpolation=cv2.INTER_AREA)
         my_label = self.ui.original_source
         image = QtGui.QImage(self.img.data, self.img.shape[1], self.img.shape[0],
                              QtGui.QImage.Format_RGB888).rgbSwapped()
@@ -121,6 +115,19 @@ class model(QtWidgets.QMainWindow):
                                     self.image_result.shape[0],
                                     QtGui.QImage.Format_RGB888).rgbSwapped()
         main_w.setPixmap(QtGui.QPixmap.fromImage(normal_image))
+
+    def load_param(self):
+        """get parameter"""
+        dialog = QtWidgets.QFileDialog()
+        options = dialog.DontResolveSymlinks | dialog.ShowDirsOnly
+        self.filename, _filter = dialog.getOpenFileName(dialog, 'Select Parameter',
+                                                        filter="Image files (*.json *.txt)",
+                                                        options=options)
+        if len(self.filename) == 0:
+            pass
+        else:
+            self.config = Config(self.filename)
+        self.initMoildev()
 
     def open_image(self):
         dialog = QtWidgets.QFileDialog()
@@ -140,13 +147,13 @@ class model(QtWidgets.QMainWindow):
                 self.ui.original_source.mouseReleaseEvent = self.mouseRelease
                 self.ui.original_source.mouseDoubleClickEvent = self.mouseDoubleClick
                 self.ui.plus_icon.mouseDoubleClickEvent = self.mouseDoubleClick
-                # self.ui.plus_icon.mouseReleaseEvent = self.mouseRelease
-                # self.mouse_controler()
 
     def normal_view(self):
         self.anypoint = False
         self.pano = False
         self.normal = True
+        self.panoX = False
+        self.ui.panoX_view.setChecked(False)
         if self.image is None:
             pass
         else:
@@ -160,6 +167,9 @@ class model(QtWidgets.QMainWindow):
     def anypoint_view(self):
         self.anypoint = True
         self.pano = False
+        self.normal = False
+        self.panoX = False
+        self.ui.panoX_view.setChecked(False)
         if self.image is None:
             pass
         else:
@@ -233,6 +243,9 @@ class model(QtWidgets.QMainWindow):
     def onclick_panorama_view(self):
         self.anypoint = False
         self.pano = True
+        self.normal = False
+        self.panoX = False
+        self.ui.panoX_view.setChecked(False)
         if self.image is None:
             pass
         else:
@@ -252,10 +265,39 @@ class model(QtWidgets.QMainWindow):
         self.ui.edit_max.setText(str(self.max))
         self.ui.edit_min.setText(str(self.min))
 
+    def onclickPanoramaX(self):
+        self.anypoint = False
+        self.pano = False
+        self.normal = False
+        self.panoX = True
+        if self.image is None:
+            pass
+        else:
+            self.alpha = 0
+            self.beta = 0
+            self.min = 10
+            self.view_original()
+            self.disableRadio_any()
+            self.ui.groupBox_4.show()
+            self.panoramaX()
+
+    def panoramaX(self):
+        self.moildev.PanoramaX(self.mapX, self.mapY, self.w, self.h, self.m_ratio, self.max, self.min)
+        self.result = cv2.remap(self.image_ori, self.mapX, self.mapY, cv2.INTER_CUBIC)
+        self.image_result = image_resize(self.result, self.height)
+        self.view_result()
+        self.ui.edit_max.setText(str(self.max))
+        self.ui.edit_min.setText(str(self.min))
+
     def set_pano(self):
         self.max = int(self.ui.edit_max.text())
-        min = int(self.ui.edit_min.text())
-        self.panorama()
+        self.min = int(self.ui.edit_min.text())
+        if self.pano:
+            self.panorama()
+        elif self.panoX:
+            self.panoramaX()
+        else:
+            pass
 
     def display_ori(self):
         self.img_any = self.image.copy()
@@ -458,28 +500,9 @@ class model(QtWidgets.QMainWindow):
         msgbox = QtWidgets.QMessageBox()
         msgbox.setWindowTitle("About Us")
         msgbox.setText(
-            "MOIL \n\n\nOmnidirectional Imaging & Surveillance Lab\n\nMing Chi University of Technology\n\n")
+            "MOIL \n\nOmnidirectional Imaging & Surveillance Lab\nMing Chi University of Technology\n\nContact: M07158031@0365.mcut.edu.tw")
         msgbox.setIconPixmap(QtGui.QPixmap('./assets/chess.jpg'))
-        msgbox.exec()
-
-    def onclick_shortcut(self):
-        msgbox = QtWidgets.QMessageBox()
-        msgbox.setWindowTitle("Help")
-        msgbox.setText("Some shortcut apps for displaying and processing colonoscopy image: \n\n"
-                       "CTRL + D : Debug Mode\n"
-                       "CTRL + I : Load Image file\n"
-                       "CTRL + V : Load Video file\n"
-                       "CTRL + P : Load Parameter\n"
-                       "CTRL + H : Help?\n"
-                       "CTRL + Q : Quit apps\n")
         msgbox.exec()
 
     def onclick_exit(self):
         self.close()
-
-
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    window = model()
-    window.show()
-    sys.exit(app.exec_())
