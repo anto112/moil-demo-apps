@@ -374,9 +374,9 @@ class model(QtWidgets.QMainWindow):
 
     def wheelEvent(self, e):
         wheelcounter = e.angleDelta()
-        if wheelcounter.y() / 120 == -1:
-            self.zoom_in()
         if wheelcounter.y() / 120 == 1:
+            self.zoom_in()
+        if wheelcounter.y() / 120 == -1:
             self.zoom_out()
 
     def mouseRelease(self, e):
